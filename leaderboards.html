@@ -1,0 +1,68 @@
+
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Rankingi — Stajnia Gier</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script src="js/firebase-config.sample.js"></script>
+  <script src="js/common.js"></script>
+  <link rel="icon" type="image/png" href="assets/logo.png"/>
+</head>
+<body>
+<header><div class="container toolbar">
+  <div class="brand"><img src="assets/logo.png" alt="Stajnia Gier" class="logo" /><h1>Rankingi</h1></div>
+  <div class="row"><button id="themeToggle" class="btn ghost">🌙/☀️</button><a class="btn ghost" href="index.html">Powrót</a></div>
+</div></header>
+<main class="container">
+  <div class="panel">
+    <div class="row"><button id="themeToggle" class="btn ghost">🌙/☀️</button>
+      <select id="game">
+        <option value="leaderboard_wojna">Wojna</option>
+        <option value="leaderboard_makao">Makao</option>
+        <option value="leaderboard_pan">Pan</option>
+        <option value="leaderboard_tysiac">Tysiąc</option>
+      </select>
+      <button id="load" class="btn">Załaduj</button>
+    </div>
+    <div class="list" id="list"></div>
+  </div>
+</main>
+<script>
+  SG.fb.init();
+  const list = document.getElementById('list');
+  document.getElementById('load').onclick = async ()=>{
+    list.innerHTML='';
+    const col = document.getElementById('game').value;
+    const snap = await SG.fb.db.collection(col).orderBy('wins','desc').limit(50).get();
+    if (snap.empty){ list.innerHTML='<div class="small">Brak wyników.</div>'; return; }
+    for (const doc of snap.docs){
+      const uid = doc.id; const data = doc.data();
+      const name = (await SG.fb.db.collection('profiles').doc(uid).get()).data()?.displayName || uid.slice(0,6);
+      const div = document.createElement('div'); div.className='item';
+      div.innerHTML = `<div>${name}</div><div class="badge">Wygrane: ${data.wins||0}</div>`;
+      list.appendChild(div);
+    }
+  };
+</script>
+
+<script>
+  (function(){
+    const apply = ()=>{
+      const mode = localStorage.getItem('theme') || 'dark';
+      document.documentElement.classList.toggle('light', mode==='light');
+    };
+    apply();
+    const b = document.getElementById('themeToggle'); if (b) b.onclick = ()=>{
+      const cur = localStorage.getItem('theme') || 'dark';
+      const next = cur==='dark' ? 'light' : 'dark';
+      localStorage.setItem('theme', next); apply();
+    };
+  })();
+</script>
+</body>
+</html>

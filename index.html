@@ -1,0 +1,107 @@
+
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Stajnia Gier — wybór gry</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <!-- Firebase v10 (modular) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script src="js/firebase-config.sample.js"></script>
+  <script src="js/app.js" defer></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-functions-compat.js"></script>
+  <script src="js/roles.js"></script>
+  <link rel="icon" type="image/png" href="assets/logo.png"/>
+</head>
+<body>
+<header>
+  <div class="container toolbar">
+    <div class="brand">
+      <img src="assets/logo.png" alt="Stajnia Gier" class="logo" />
+      <h1>Stajnia Gier</h1>
+      <span class="badge">statyczna platforma gier karcianych</span>
+    </div>
+    <div class="row"><button id="themeToggle" class="btn ghost">🌙/☀️</button>
+      <span id="userLabel" class="small">Niezalogowany</span>
+      <button id="btnLogin" class="btn">Zaloguj</button>
+      <button id="btnLogout" class="btn secondary hidden">Wyloguj</button>
+    </div>
+  </div>
+</header>
+
+<main class="container">
+  <div class="panel">
+    <div class="row wrap" style="justify-content:space-between;">
+      <div>
+        <div class="small">Witamy w</div>
+        <div class="big">Stajni Gier</div>
+        <div class="small">Założycielem, właścicielem i twórcą jest <span class="role owner">O Adrian&nbsp;Zieliński</span>.</div>
+      </div>
+      <div class="row"><button id="themeToggle" class="btn ghost">🌙/☀️</button>
+        <label>Nick:</label>
+        <input id="displayName" placeholder="Twoja nazwa" />
+        <button class="btn ghost" onclick="SG.saveDisplayName()">Zapisz</button>
+      </div>
+    </div>
+  </div>
+
+  <section class="grid games">
+    <a class="card" href="lobby.html?game=makao">
+      <h3>Makao</h3>
+      <div class="meta">Gra wieloosobowa 3–6 • karty funkcyjne</div>
+    </a>
+    <a class="card" href="lobby.html?game=pan">
+      <h3>Pan (President)</h3>
+      <div class="meta">Gra 2–4 • rangi i rundy</div>
+    </a>
+    <a class="card" href="lobby.html?game=tysiac">
+      <h3>Tysiąc</h3>
+      <div class="meta">Gra 3 • meldunki i atu</div>
+    </a>
+    <a class="card" href="lobby.html?game=wojna">
+      <h3>Wojna</h3>
+      <div class="meta">Gra 2 • automatyczna symulacja</div>
+    </a>
+  </section>
+
+  <div class="row" style="margin:12px 0;"><a class="btn ghost" href="leaderboards.html">Zobacz rankingi</a><a class="btn ghost" href="admin.html">Panel admina</a></div>
+  <footer>
+    Stajnia Gier — © 2025. Wersja MVP. Zrobione przez AI na bazie specyfikacji użytkownika.
+  </footer>
+</main>
+
+  <script>
+    (function(){
+      const conf = window.FB_CONF || {};
+      SG.fb.init();
+      SG.fb.auth.onAuthStateChanged(async (u)=>{
+        if (u && conf.OWNER_UID && u.uid===conf.OWNER_UID){
+          const c = document.querySelector('main .container') || document.querySelector('main');
+          const roleBox = document.createElement('div'); roleBox.id='roleAdminMount';
+          c.appendChild(roleBox);
+          roleBox.appendChild(RoleAdmin());
+        }
+      });
+    })();
+  </script>
+
+
+<script>
+  (function(){
+    const apply = ()=>{
+      const mode = localStorage.getItem('theme') || 'dark';
+      document.documentElement.classList.toggle('light', mode==='light');
+    };
+    apply();
+    const b = document.getElementById('themeToggle'); if (b) b.onclick = ()=>{
+      const cur = localStorage.getItem('theme') || 'dark';
+      const next = cur==='dark' ? 'light' : 'dark';
+      localStorage.setItem('theme', next); apply();
+    };
+  })();
+</script>
+</body>
+</html>

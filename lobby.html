@@ -1,0 +1,132 @@
+
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Lobby — Stajnia Gier</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script src="js/firebase-config.sample.js"></script>
+  <script src="js/common.js"></script>
+  <script src="js/app.js" defer></script>
+  <script src="js/lobby.js" defer></script>
+  <link rel="icon" type="image/png" href="assets/logo.png"/>
+</head>
+<body>
+<header>
+  <div class="container toolbar">
+    <div class="brand">
+      <img src="assets/logo.png" alt="Stajnia Gier" class="logo" />
+      <h1>Lobby</h1>
+      <span id="gameName" class="badge"></span>
+    </div>
+    <div class="row"><button id="themeToggle" class="btn ghost">🌙/☀️</button>
+      <span id="userLabel" class="small">...</span>
+      <button id="btnLogout" class="btn secondary">Wyloguj</button>
+    </div>
+  </div>
+</header>
+
+<main class="container">
+  <div class="panel" id="wizard">
+    <div class="big">Nowy pokój — kreator</div>
+    <div class="row"><span class="small">Krok <span id="wizardStep">1</span>/3</span></div>
+    <div id="w1">
+      <label>Gra</label>
+      <select id="wGame">
+        <option value="wojna">Wojna (2)</option>
+        <option value="makao">Makao (2–6)</option>
+        <option value="pan">Pan (2–4)</option>
+        <option value="tysiac">Tysiąc (3)</option>
+      </select>
+      <label>Nazwa stołu</label>
+      <input id="wName" placeholder="np. Stół Adriana" />
+      <div class="row"><button class="btn" id="wNext1">Dalej</button></div>
+    </div>
+    <div id="w2" style="display:none">
+      <label>Publiczny?</label>
+      <select id="wPublic"><option value="true">Tak</option><option value="false">Nie (kod/ID)</option></select>
+      <label>Miejsca</label>
+      <input id="wSeats" type="number" value="4" min="2" max="6"/>
+      <div class="row"><button class="btn ghost" id="wBack1">Wstecz</button><button class="btn" id="wNext2">Dalej</button></div>
+    </div>
+    <div id="w3" style="display:none">
+      <div class="small">Ustawienia gry (opcjonalnie)</div>
+      <div id="wOpts">
+        <div class="small">Makao: kara za brak „Makao”</div>
+        <input id="wMakaoPenalty" type="number" min="1" max="10" value="5"/>
+        <div class="small">Makao: Joker</div>
+        <select id="wMakaoJoker"><option value="off">Wyłączony</option><option value="on">Włączony</option></select>
+        <div class="small">Makao: Bitni królowie ♦/♣</div>
+        <select id="wMakaoExtraKings"><option value="off">Nie</option><option value="on">Tak</option></select>
+      </div>
+      <div class="row"><button class="btn ghost" id="wBack2">Wstecz</button><button class="btn" id="wCreate">Utwórz</button></div>
+    </div>
+  </div>
+  <div class="row wrap" style="justify-content:space-between;align-items:flex-end;">
+    <div class="panel" style="flex:1">
+      <div class="row" style="justify-content:space-between;align-items:center;">
+        <div>
+          <div class="big">Pokoje</div>
+          <div class="small">Publiczne i prywatne stoły dla tej gry.</div>
+        </div>
+        <div class="row"><button id="themeToggle" class="btn ghost">🌙/☀️</button>
+          <label>Filtr:</label>
+          <select id="filterStatus">
+            <option value="waiting">Tylko oczekujące</option>
+            <option value="ongoing">Tylko w trakcie</option>
+            <option value="all" selected>Wszystkie</option>
+          </select>
+          <button class="btn" id="btnRefresh">Odśwież</button>
+        </div>
+      </div>
+      <div class="list" id="roomsList"></div>
+    </div>
+
+    <div class="panel" style="min-width:320px">
+      <div class="big">Nowy pokój</div>
+      <label>Nazwa (opcjonalnie)</label>
+      <input id="roomName" placeholder="np. Stolik #1" />
+      <label>Tryb stołu</label>
+      <select id="roomVisibility">
+        <option value="public">Publiczny</option>
+        <option value="private">Prywatny</option>
+      </select>
+      <label>Maks graczy (wg gry)</label>
+      <input id="roomSeats" type="number" min="2" max="6" value="2" />
+      <label>Makao — kara za brak (domyślnie 5)</label>
+      <input id="makaoPenalty" type="number" min="1" max="10" value="5" />
+      <label>Makao — Joker?</label>
+      <select id="makaoJoker"><option value="off">Wyłączony</option><option value="on">Włączony</option></select>
+      <button class="btn" id="btnCreate">Utwórz pokój</button>
+      <hr/>
+      <div class="small">Role globalne:</div>
+      <div class="row"><button id="themeToggle" class="btn ghost">🌙/☀️</button>
+        <span class="role owner">Owner</span>
+        <span class="role admin">Admin</span>
+        <span class="role mod">Moderator</span>
+        <span class="role player">Player</span>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+  (function(){
+    const apply = ()=>{
+      const mode = localStorage.getItem('theme') || 'dark';
+      document.documentElement.classList.toggle('light', mode==='light');
+    };
+    apply();
+    const b = document.getElementById('themeToggle'); if (b) b.onclick = ()=>{
+      const cur = localStorage.getItem('theme') || 'dark';
+      const next = cur==='dark' ? 'light' : 'dark';
+      localStorage.setItem('theme', next); apply();
+    };
+  })();
+</script>
+</body>
+</html>

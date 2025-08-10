@@ -1,0 +1,89 @@
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function role() { return request.auth.token.role != null ? request.auth.token.role : 'player'; }
+    function isOwner() { return role() == 'owner' || (request.auth.uid == (get(/databases/$(database)/documents/config/app).data.OWNER_UID)); }
+    function isAdmin() { return isOwner() || role() == 'admin'; }
+    function isMod() { return isAdmin() || role() == 'mod'; }
+
+
+    function isSignedIn() { return request.auth != null; }
+    function uid() { return request.auth.uid; }
+
+    match /profiles/{userId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && userId == uid();
+    }
+
+    match /roles/{userId} {
+      allow read: if isSignedIn();
+      // Zapisu ról dokonuje tylko owner/admin (tu uproszczenie: blokujemy z klienta; ustaw przez custom claims lub ręcznie w konsoli).
+      allow write: if false;
+    }
+
+    match /rooms/{roomId} {
+      match /rtc/{docId=**} { allow read, write: if isSignedIn(); }
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update, delete: if isSignedIn() && (resource.data.host == uid() || request.resource.data.host == uid());
+      match /state/{docId} {
+        allow read: if isSignedIn();
+        // Aktualizuje host pokoju
+        allow write: if isSignedIn() && get(/databases/$(database)/documents/rooms/$(roomId)).data.host == uid();
+      }
+    }
+
+    // Rankingi — zapis tylko przez hosta (uproszczenie).
+    
+    match /leaderboard_wojna/{userId} {
+      allow read: if true;
+      allow write: if isSignedIn() && (isAdmin() || request.auth.uid == userId);
+    }
+
+
+    // Pozostałe leaderboards można dodać podobnie…
+
+    // Domyślnie odrzuć
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+
+    match /leaderboard_makao/{userId} {
+      allow read: if true;
+      allow write: if isSignedIn() && (isAdmin() || request.auth.uid == userId);
+    }
+    match /leaderboard_pan/{userId} {
+      allow read: if true;
+      allow write: if isSignedIn() && (isAdmin() || request.auth.uid == userId);
+    }
+    match /leaderboard_tysiac/{userId} {
+      allow read: if true;
+      allow write: if isSignedIn() && (isAdmin() || request.auth.uid == userId);
+    }
+
+    match /audit/{logId} {
+      allow read: if isMod();
+      allow write: if isSignedIn() && isMod();
+    }
+
+    match /rooms/{roomId}/messages/{msgId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow delete: if isMod(); // moderatorzy i wyżej mogą usuwać
+      allow update: if false;
+    }
+    match /rooms/{roomId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update, delete: if isSignedIn() && (resource.data.host == uid() || request.resource.data.host == uid() || isAdmin());
+      match /state/{docId} {
+        allow read: if isSignedIn();
+        allow write: if isSignedIn() && (get(/databases/$(database)/documents/rooms/$(roomId)).data.host == uid() || isAdmin());
+      }
+      match /rtc/{docId=**} { allow read, write: if isSignedIn(); }
+    }
+    

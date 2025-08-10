@@ -1,0 +1,108 @@
+
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Panel administracyjny — Stajnia Gier</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="icon" type="image/png" href="assets/logo.png"/>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script src="js/firebase-config.sample.js"></script>
+  <script src="js/common.js"></script>
+</head>
+<body>
+<header><div class="container toolbar">
+  <div class="brand"><img src="assets/logo.png" class="logo" alt="Stajnia Gier"/><h1>Panel administracyjny</h1></div>
+  <div class="row"><button id="themeToggle" class="btn ghost">🌙/☀️</button><a class="btn ghost" href="index.html">Powrót</a></div>
+</div></header>
+<main class="container">
+  <div class="grid" style="grid-template-columns: 1fr 1fr;">
+    <div class="panel">
+      <div class="big">Audit (ostatnie 100)</div>
+      <div id="audit" class="list" style="max-height:420px;overflow:auto"></div>
+    </div>
+    <div class="panel">
+      <div class="big">Moderacja czatu</div>
+      <div class="row"><button id="themeToggle" class="btn ghost">🌙/☀️</button>
+        <input id="roomId" placeholder="roomId" style="flex:1"/>
+        <button id="loadChat" class="btn">Załaduj</button>
+      </div>
+      <div id="chat" class="list" style="max-height:420px;overflow:auto;margin-top:8px"></div>
+    </div>
+    <div class="panel">
+      <div class="big">Banlista pokoju</div>
+      <div class="row"><button id="themeToggle" class="btn ghost">🌙/☀️</button>
+        <input id="banRoom" placeholder="roomId" style="flex:1"/><input id="banUid" placeholder="UID"/>
+        <button id="banAdd" class="btn danger">Zbanuj</button>
+        <button id="banRem" class="btn secondary">Usuń</button>
+      </div>
+      <div class="small">Tylko host/admin może modyfikować banlistę danego pokoju.</div>
+    </div>
+  </div>
+</main>
+<script>
+  SG.fb.init();
+  const db = SG.fb.db;
+
+  // Audit
+  (async ()=>{
+    const q = await db.collection('audit').orderBy('ts','desc').limit(100).get();
+    const box = document.getElementById('audit');
+    q.forEach(d=>{
+      const a=d.data(); const div=document.createElement('div'); div.className='item';
+      div.innerHTML = `<div class="small">${a.type||''} • room:${a.room||''} • user:${(a.user||'').slice(0,6)} • ${a.ts?.toDate?.().toLocaleString?.()||''}</div>`;
+      box.appendChild(div);
+    });
+  })();
+
+  // Chat moderation
+  document.getElementById('loadChat').onclick = async ()=>{
+    const room = document.getElementById('roomId').value.trim(); if (!room) return;
+    const list = document.getElementById('chat'); list.innerHTML='';
+    const snap = await db.collection('rooms').doc(room).collection('messages').orderBy('ts','desc').limit(100).get();
+    snap.forEach(doc=>{
+      const m = doc.data(); const div=document.createElement('div'); div.className='item';
+      div.innerHTML = `<div class="small"><strong>${m.name||'?'}:</strong> ${m.text||''}</div><button class="btn danger">Usuń</button>`;
+      div.querySelector('button').onclick = async ()=>{ await doc.ref.delete(); div.remove(); };
+      list.appendChild(div);
+    });
+  };
+
+  // Banlist
+  document.getElementById('banAdd').onclick = async ()=>{
+    const r = document.getElementById('banRoom').value.trim(); const u = document.getElementById('banUid').value.trim();
+    if (!r||!u) return;
+    const ref = db.collection('rooms').doc(r);
+    await ref.update({banlist: firebase.firestore.FieldValue.arrayUnion(u)});
+    await db.collection('audit').add({ts: firebase.firestore.FieldValue.serverTimestamp(), type:'admin:ban', room:r, user: SG.currentUser?.uid, target:u});
+    alert('Zbanowany.');
+  };
+  document.getElementById('banRem').onclick = async ()=>{
+    const r = document.getElementById('banRoom').value.trim(); const u = document.getElementById('banUid').value.trim();
+    if (!r||!u) return;
+    const ref = db.collection('rooms').doc(r);
+    await ref.update({banlist: firebase.firestore.FieldValue.arrayRemove(u)});
+    await db.collection('audit').add({ts: firebase.firestore.FieldValue.serverTimestamp(), type:'admin:unban', room:r, user: SG.currentUser?.uid, target:u});
+    alert('Usunięto z banlisty.');
+  };
+</script>
+
+<script>
+  (function(){
+    const apply = ()=>{
+      const mode = localStorage.getItem('theme') || 'dark';
+      document.documentElement.classList.toggle('light', mode==='light');
+    };
+    apply();
+    const b = document.getElementById('themeToggle'); if (b) b.onclick = ()=>{
+      const cur = localStorage.getItem('theme') || 'dark';
+      const next = cur==='dark' ? 'light' : 'dark';
+      localStorage.setItem('theme', next); apply();
+    };
+  })();
+</script>
+</body>
+</html>
