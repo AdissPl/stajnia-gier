@@ -1,5 +1,5 @@
 // js/firebase-config.js (compat style for SG.fb.init())
-// This file replaces js/firebase-config.sample.js in your HTML files.
+// Drop-in config for GitHub Pages / static hosting.
 window.FB_CONF = {
   apiKey: "AIzaSyCANGRhbT_a_BTkxWeLl2yfqYIbR3safoU",
   authDomain: "stajnia-gier.firebaseapp.com",
